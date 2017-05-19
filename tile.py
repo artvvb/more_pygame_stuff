@@ -23,6 +23,7 @@ HEX = 1
 class tile:
 	def __init__(self, x, y, rgb, tex, tiletype):
 		self.rgb, self.tex, self.tiletype = rgb, tex, tiletype
+		self.loc = (x, y)
 		self.coords = [(x + cx, y + cy) for cx, cy in tiledata[tiletype]]
 		self.texcoords = [(cx, 1.0 - cy) for cx, cy in tiledata[tiletype]]
 	def draw(self, size):

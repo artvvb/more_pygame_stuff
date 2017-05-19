@@ -7,6 +7,7 @@ from PIL import Image
 import font
 import color
 import tile
+import unit
 
 from ogl_2d import *
 
@@ -22,10 +23,10 @@ USETEX = True
 RANGE = 2
 
 TILE_ADJ = [
-	(-1.0, 0.0),
-	( 0.0,-1.0),
-	( 1.0, 0.0),
-	( 0.0, 1.0)
+	(-1, 0),
+	( 0,-1),
+	( 1, 0),
+	( 0, 1)
 ]
 
 g_colors = {
@@ -35,6 +36,9 @@ g_colors = {
 "SELECTED":	color.d_color["RED"],
 "FOW_SELECTED": color.d_color["RED"] * 0.5
 }
+
+g_texnames = ["unit.png", "bound.png"]
+
 class mygame:
 	def __init__(self):
 		self.width, self.height = WINDOW_SIZE_W, WINDOW_SIZE_H
@@ -45,29 +49,32 @@ class mygame:
 		for y in range(self.map_height):
 			for x in range(self.map_width):
 				trgb = "FOW"
-				ttex = 2#(x+y*self.map_width)%2
+				ttex = g_texnames.index("bound.png")#(x+y*self.map_width)%2
 				tx = x if TILE_TYPE == tile.RECT else (x + (0.5 if y%2 == 0 else 0.0))
 				ty = y
 				self.tiles.append(tile.tile(tx, ty, trgb, ttex, TILE_TYPE))
 		self.init_window()
 		self.init_callback()
 		if USETEX: self.init_tex()
-		self.selection=0
-		self.targets=self.get_tiles_in_range(0, 0, RANGE)
-	def get_tiles_in_range(self, x, y, r):
-		if TILE_TYPE == tile.RECT:
-			if r < 0:
-				return []
-			elif r == 0:
-				return [y*self.map_width+x]
-			else:
-				tir = []
-				for coord in TILE_ADJ:
-					if x+coord[0] >= 0 and y+coord[1] >= 0 and x+coord[0] < self.map_width and y+coord[1] < self.map_height:
-						for ti in self.get_tiles_in_range(x+coord[0],y+coord[1], r-1):
-							tir.append(ti)
-						tir.append(y*self.map_width+x)
-				return tir
+		self.targets=None#self.get_range_list(0, 0, RANGE)
+		self.units = [unit.unit((0,0), g_texnames.index("unit.png"))]
+		self.selected = None
+	def coord_in_bounds(self, v2_c):
+		return v2_c[0] >= 0 and v2_c[1] >= 0 and v2_c[0] < self.map_width and v2_c[1] < self.map_height
+	def get_range_list(self, x, y, r):
+		a_targ = [[] for i in range(r+1)]
+		a_targ[0].append((int(x), int(y)))
+		for i in range(1,r+1):
+			for v2_tile in a_targ[i-1]:
+				for v2_delta in TILE_ADJ:
+					v2_coord = (v2_tile[0]+v2_delta[0], v2_tile[1]+v2_delta[1])
+					if self.coord_in_bounds(v2_coord):
+						for l in a_targ:
+							if v2_coord in l:
+								break
+						else:
+							a_targ[i].append(v2_coord)
+		return a_targ
 	def init_window(self):
 		glutInit()											   # initialize glut
 		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
@@ -82,20 +89,29 @@ class mygame:
 		glutKeyboardFunc(lambda key, x, y: m.keyboard(key, x, y))
 		glutReshapeFunc(lambda w, h: self.reshape(w, h))
 	def init_tex(self):
-		self.genTextures(["sample.png", "sample2.png", "bound.png"])
+		self.genTextures(g_texnames)
 	def reshape(self, w, h):
 		self.width = w
 		self.height = h
 	def mouse(self, button, state, x, y):
-		if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
-			if TILE_TYPE == tile.RECT:
+		if TILE_TYPE == tile.RECT:
+			rx = x * self.map_width // self.width
+			ry = (self.height - y) * self.map_height // self.height
+			ri = ry * self.map_width + rx
+			if button == GLUT_RIGHT_BUTTON and state == GLUT_DOWN:
+				for u in range(len(self.units)):
+					if self.units[u].loc == (rx,ry):
+						self.selected = u
+						self.targets=self.get_range_list(rx, ry, RANGE)
+						break
+				else:
+					self.selected = None
+					self.targets = None
+			if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
 				#assumes that tiles list has not changed order
-				rx = x * self.map_width // self.width
-				ry = (self.height - y) * self.map_height // self.height
-				ri = ry * self.map_width + rx
-				if ri in self.targets:
-					self.selection=ri
-					self.targets = self.get_tiles_in_range(rx, ry, RANGE)
+				if self.get_range(self.targets, (rx, ry)) >= 0:
+					self.targets = self.get_range_list(rx, ry, RANGE)
+					self.units[self.selected].loc = (rx, ry)
 			else:
 				print("check")
 	def keyboard(self, key, x, y):
@@ -118,7 +134,13 @@ class mygame:
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.size[0], img.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, img_data)
-
+	def get_range(self, l2_range, v2_coord):
+		if l2_range == None:
+			return -1
+		for i in range(len(l2_range)):
+			if v2_coord in l2_range[i]:
+				return i
+		return -1
 	def draw(self):
 		refresh2d(1, 1, self.width, self.height)										# set mode to 2d
 		
@@ -129,15 +151,23 @@ class mygame:
 			glColor3f(1.0, 1.0, 1.0);
 			font.draw("Hello World!", 0.5, 0.5)
 		else:
-			for t in range(len(self.tiles)):
-				if USETEX: glBindTexture(GL_TEXTURE_2D, self.textures[self.tiles[t].tex])
-				if t == self.selection:
-					g_colors["FOW_SELECTED"].draw()
-				elif t in self.targets:
-					g_colors["IN_LOS"].draw()
+			for t in self.tiles:
+				if USETEX:
+					for u in self.units:
+						if u.loc == t.loc:
+							glBindTexture(GL_TEXTURE_2D, self.textures[u.tex])
+							break
+					else:
+						glBindTexture(GL_TEXTURE_2D, self.textures[t.tex])
+				
+				r = self.get_range(self.targets, t.loc)
+				if r != -1:
+					c = g_colors["SELECTED"]
+					c.r = float(RANGE+1-r) / (RANGE+1)# 0->1 1->0.5 2->0.33
+					c.draw()
 				else:
 					g_colors["FOW"].draw()
-				self.tiles[t].draw(self.size)
+				t.draw(self.size)
 		glDisable(GL_TEXTURE_2D)		
 		glutSwapBuffers()
 		
