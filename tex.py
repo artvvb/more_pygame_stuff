@@ -57,7 +57,12 @@ class mygame:
 		self.init_callback()
 		if USETEX: self.init_tex()
 		self.targets=None#self.get_range_list(0, 0, RANGE)
-		self.units = [unit.unit((0,0), g_texnames.index("unit.png"))]
+		self.units = [
+			unit.unit((0,0), g_texnames.index("unit.png"), 2),
+			unit.unit((9,9), g_texnames.index("unit.png"), 3),
+			unit.unit((3,6), g_texnames.index("unit.png"), 1),
+			unit.unit((3,5), g_texnames.index("unit.png"), 0)
+		]
 		self.selected = None
 	def coord_in_bounds(self, v2_c):
 		return v2_c[0] >= 0 and v2_c[1] >= 0 and v2_c[0] < self.map_width and v2_c[1] < self.map_height
@@ -102,18 +107,19 @@ class mygame:
 				for u in range(len(self.units)):
 					if self.units[u].loc == (rx,ry):
 						self.selected = u
-						self.targets=self.get_range_list(rx, ry, RANGE)
+						self.targets=self.get_range_list(rx, ry, self.units[u].moverange)
 						break
 				else:
 					self.selected = None
 					self.targets = None
 			if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
-				#assumes that tiles list has not changed order
 				if self.get_range(self.targets, (rx, ry)) >= 0:
-					self.targets = self.get_range_list(rx, ry, RANGE)
-					self.units[self.selected].loc = (rx, ry)
-			else:
-				print("check")
+					for u in self.units:
+						if u.loc == (rx,ry):
+							break
+					else:
+						self.targets = self.get_range_list(rx, ry, self.units[self.selected].moverange)
+						self.units[self.selected].loc = (rx, ry)
 	def keyboard(self, key, x, y):
 		if key == b'\x1b':
 			exit()
@@ -146,7 +152,6 @@ class mygame:
 		
 		glClear(GL_COLOR_BUFFER_BIT)
 		if USETEX: glEnable(GL_TEXTURE_2D)
-		
 		if USEFONT:
 			glColor3f(1.0, 1.0, 1.0);
 			font.draw("Hello World!", 0.5, 0.5)
@@ -162,8 +167,17 @@ class mygame:
 				
 				r = self.get_range(self.targets, t.loc)
 				if r != -1:
-					c = g_colors["SELECTED"]
-					c.r = float(RANGE+1-r) / (RANGE+1)# 0->1 1->0.5 2->0.33
+					for u in self.units:
+						if u.loc == t.loc and u.loc != self.targets[0][0]:
+							foo = False
+							break
+					else:
+						foo = True
+					if foo:
+						c = g_colors["SELECTED"]
+						c.r = float(self.units[self.selected].moverange+1-r) / (RANGE+1)# 0->1 1->0.5 2->0.33
+					else:
+						c = g_colors["FOW"]
 					c.draw()
 				else:
 					g_colors["FOW"].draw()
