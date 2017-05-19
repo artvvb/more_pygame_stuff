@@ -13,14 +13,14 @@ from ogl_2d import *
 
 window = 0		# glut window number
 
-
 TILE_TYPE = tile.RECT
 MAP_SIZE_W, MAP_SIZE_H = 10, 10
 WINDOW_SIZE_W, WINDOW_SIZE_H = 640, 480
 FULLSCREEN = False
 USEFONT = False
 USETEX = True
-RANGE = 2
+TEXDIR = "textures/"
+TEXEXT = ".png"
 
 TILE_ADJ = [
 	(-1, 0),
@@ -37,7 +37,7 @@ g_colors = {
 "FOW_SELECTED": color.d_color["RED"] * 0.5
 }
 
-g_texnames = ["unit.png", "bound.png"]
+g_texnames = ["unit", "bound"]
 
 class mygame:
 	def __init__(self):
@@ -49,7 +49,7 @@ class mygame:
 		for y in range(self.map_height):
 			for x in range(self.map_width):
 				trgb = "FOW"
-				ttex = g_texnames.index("bound.png")#(x+y*self.map_width)%2
+				ttex = g_texnames.index("bound")#(x+y*self.map_width)%2
 				tx = x if TILE_TYPE == tile.RECT else (x + (0.5 if y%2 == 0 else 0.0))
 				ty = y
 				self.tiles.append(tile.tile(tx, ty, trgb, ttex, TILE_TYPE))
@@ -58,10 +58,10 @@ class mygame:
 		if USETEX: self.init_tex()
 		self.targets=None#self.get_range_list(0, 0, RANGE)
 		self.units = [
-			unit.unit((0,0), g_texnames.index("unit.png"), 2),
-			unit.unit((9,9), g_texnames.index("unit.png"), 3),
-			unit.unit((3,6), g_texnames.index("unit.png"), 1),
-			unit.unit((3,5), g_texnames.index("unit.png"), 0)
+			unit.unit((0,0), g_texnames.index("unit"), 2),
+			unit.unit((9,9), g_texnames.index("unit"), 3),
+			unit.unit((3,6), g_texnames.index("unit"), 1),
+			unit.unit((3,5), g_texnames.index("unit"), 0)
 		]
 		self.selected = None
 	def coord_in_bounds(self, v2_c):
@@ -94,7 +94,8 @@ class mygame:
 		glutKeyboardFunc(lambda key, x, y: m.keyboard(key, x, y))
 		glutReshapeFunc(lambda w, h: self.reshape(w, h))
 	def init_tex(self):
-		self.genTextures(g_texnames)
+		texnames = [TEXDIR+s+TEXEXT for s in g_texnames]
+		self.genTextures(texnames)
 	def reshape(self, w, h):
 		self.width = w
 		self.height = h
@@ -175,7 +176,7 @@ class mygame:
 						foo = True
 					if foo:
 						c = g_colors["SELECTED"]
-						c.r = float(self.units[self.selected].moverange+1-r) / (RANGE+1)# 0->1 1->0.5 2->0.33
+						c.r = float(self.units[self.selected].moverange+1-r) / (self.units[self.selected].moverange+1)# 0->1 1->0.5 2->0.33
 					else:
 						c = g_colors["FOW"]
 					c.draw()
