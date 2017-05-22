@@ -23,6 +23,7 @@ TEXDIR = "textures/"
 TEXEXT = ".png"
 RANDRANGE=(0,99)
 
+
 TILE_ADJ = [
 	(-1, 0),
 	( 0,-1),
@@ -139,12 +140,16 @@ class mygame:
 			for v2_tile in a_targ[i-1]:
 				for v2_delta in TILE_ADJ:
 					v2_coord = (v2_tile[0]+v2_delta[0], v2_tile[1]+v2_delta[1])
+					if self.loc_has_unit(v2_coord):
+						print("U", v2_coord)
 					if self.coord_in_bounds(v2_coord) and not self.loc_has_unit(v2_coord):
 						for l in a_targ:
 							if v2_coord in l:
 								break
 						else:
+							print(i, v2_coord)
 							a_targ[i].append(v2_coord)
+		print()
 		return a_targ
 	def get_range_list_weighted(self, x, y, r):
 		a_targ = []
@@ -203,8 +208,8 @@ class mygame:
 						if u.loc == (rx,ry):
 							break
 					else:
-						self.l2v_movereg = self.get_range_list((rx,ry), self.units[self.selected].moverange)
 						self.units[self.selected].loc = (rx, ry)
+						self.l2v_movereg = self.get_range_list((rx,ry), self.units[self.selected].moverange)
 	def keyboard(self, key, x, y):
 		if key == b'\x1b':
 			self.tooltip.stop()
@@ -279,7 +284,7 @@ class mygame:
 						rot = 0
 				else:
 					rot = 0
-				r = self.get_range(self.l2v_movereg[0], t.loc)
+				r = self.get_range(self.l2v_movereg, t.loc)
 				
 				if r == -1: # tile is not in range of selected unit
 					# color the tile being hovered over blue
@@ -291,7 +296,7 @@ class mygame:
 				else:
 					if self.mouseloc != None and t.loc == self.mouseloc:
 						c = color.d_color["GREEN"] * 0.5
-					elif self.tile_has_unit(t) and t.loc != self.targets[0][0]:
+					elif self.tile_has_unit(t) and t.loc != self.l2v_movereg[0][0]:
 						c = color.d_color["WHITE"] * 0.5
 					else:
 						c = color.d_color["RED"]
@@ -299,18 +304,9 @@ class mygame:
 				c.draw()
 				t.draw(self.size, rot)
 		if self.tooltip.do_render and self.wmouseloc != None:
-			# TODO: draw a textured rectangle behind the text
-			#glBindTexture(GL_TEXTURE_2D, self.textures[g_texnames.index("bound")])
 			glDisable(GL_TEXTURE_2D)
 			glColor3f(1.0, 1.0, 1.0)
 			s = "data: " + repr(self.tooltip.data)
-			print(
-				self.wmouseloc[0],
-				self.wmouseloc[1] + 13.0 / self.height,
-				8.0 * len(s) / self.width,
-				-1.0 * 13 / self.height,
-				self.size
-			)
 			tile.draw_rect(
 				self.wmouseloc[0],
 				self.wmouseloc[1] + 13.0 / self.height,
