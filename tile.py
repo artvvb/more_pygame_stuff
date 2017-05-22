@@ -20,9 +20,17 @@ tiledata = [
 RECT = 0
 HEX = 1
 
+def draw_rect(x, y, dx, dy, size, usetex, rotation=0):
+	glBegin(GL_QUADS)
+	for i in range(4):
+		ti = (i + rotation) % 4
+		glTexCoord2f(tiledata[0][ti][0], tiledata[0][ti][1])
+		glVertex2f(x + tiledata[0][i][0] * dx, y + tiledata[0][i][1] * dy)
+	glEnd()
+
 class tile:
-	def __init__(self, x, y, rgb, tex, tiletype):
-		self.rgb, self.tex, self.tiletype = rgb, tex, tiletype
+	def __init__(self, x, y, tex, tiletype, data):
+		self.tex, self.tiletype, self.data = tex, tiletype, data
 		self.loc = (x, y)
 		self.coords = [(x + cx, y + cy) for cx, cy in tiledata[tiletype]]
 		self.texcoords = [(cx, 1.0 - cy) for cx, cy in tiledata[tiletype]]
