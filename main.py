@@ -9,8 +9,6 @@ import color
 import tile
 import unit
 
-from ogl_2d import *
-
 window = 0		# glut window number
 
 TILE_TYPE = tile.RECT
@@ -18,7 +16,7 @@ MAP_SIZE_W, MAP_SIZE_H = 10, 10
 WINDOW_SIZE_W, WINDOW_SIZE_H = 640, 480
 FULLSCREEN = False
 USEFONT = False
-USETEX = True
+USETEX = TILE_TYPE == tile.RECT
 TEXDIR = "textures/"
 TEXEXT = ".png"
 
@@ -28,16 +26,32 @@ TILE_ADJ = [
 	( 1, 0),
 	( 0, 1)
 ]
-
-g_colors = {
-"BACK":		color.d_color["BLACK"],
-"FOW":		color.d_color["WHITE"] * 0.5,
-"IN_LOS":  	color.d_color["WHITE"],
-"SELECTED":	color.d_color["RED"],
-"FOW_SELECTED": color.d_color["RED"] * 0.5
+ARROW_ROT = {
+	( 0, 1): 0,
+	(-1, 0): 1,
+	( 0,-1): 2,
+	( 1, 0): 3,
+	
+	(-1,-1): 0,#
+	( 1,-1): 3,
+	(-1, 1): 1,#
+	( 1, 1): 2
 }
 
-g_texnames = ["unit", "bound"]
+
+g_TILETEX = "bound" if TILE_TYPE == tile.RECT else "hex-bound"
+g_texnames = ["unit", g_TILETEX, "arrow-u", "arrow-ud", "arrow-ur"]
+
+def refresh2d(vw, vh, width, height):
+	glViewport(0, 0, width, height)
+	glClearColor(0, 0, 0, 0)
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+	glLoadIdentity()
+	glMatrixMode(GL_PROJECTION)
+	glLoadIdentity()
+	glOrtho(0.0, vw, 0.0, vh, 0.0, 1.0)
+	glMatrixMode (GL_MODELVIEW)
+	glLoadIdentity()
 
 class mygame:
 	def __init__(self):
@@ -49,7 +63,7 @@ class mygame:
 		for y in range(self.map_height):
 			for x in range(self.map_width):
 				trgb = "FOW"
-				ttex = g_texnames.index("bound")#(x+y*self.map_width)%2
+				ttex = g_texnames.index(g_TILETEX)#(x+y*self.map_width)%2
 				tx = x if TILE_TYPE == tile.RECT else (x + (0.5 if y%2 == 0 else 0.0))
 				ty = y
 				self.tiles.append(tile.tile(tx, ty, trgb, ttex, TILE_TYPE))
@@ -64,9 +78,50 @@ class mygame:
 			unit.unit((3,5), g_texnames.index("unit"), 0)
 		]
 		self.selected = None
+		self.mouseloc = None
+	def get_delta(self, v2_s, v2_d):
+		if v2_s[0] > v2_d[0]:
+			return (-1, 0)
+		elif v2_s[0] < v2_d[0]:
+			return ( 1, 0)
+		elif v2_s[1] > v2_d[1]:
+			return ( 0,-1)
+		else:# v2_s[0] < v2_d[0]:
+			return ( 0, 1)
+	def get_path_tex(self, v2_s, v2_d):
+		a_v2_path = {v2_s: (g_texnames.index("unit"), 0)}
+		if v2_s == v2_d:
+			return a_v2_path
+		
+		v2_t = v2_s
+		v2_delta = self.get_delta(v2_t, v2_d)
+		
+		while v2_t != v2_d:
+			v2_ldelta = v2_delta
+			v2_delta = self.get_delta(v2_t, v2_d)
+			
+			if v2_delta != v2_ldelta:
+				v2_rdelta = (v2_delta[0]+v2_ldelta[0], v2_delta[1]+v2_ldelta[1])
+			else:
+				v2_rdelta = v2_ldelta
+			rot = ARROW_ROT[v2_rdelta]
+			
+			if v2_delta[0] == v2_ldelta[0] or v2_delta[1] == v2_ldelta[1]:
+				texname = "arrow-ud"
+			else:
+				texname = "arrow-ur"
+				
+			if v2_t != v2_s:
+				a_v2_path[v2_t] = (g_texnames.index(texname), rot)
+			v2_t = (v2_t[0]+v2_delta[0], v2_t[1]+v2_delta[1])
+		
+		a_v2_path[v2_t] = (g_texnames.index("arrow-u"), ARROW_ROT[v2_delta])
+		
+		return a_v2_path
 	def coord_in_bounds(self, v2_c):
 		return v2_c[0] >= 0 and v2_c[1] >= 0 and v2_c[0] < self.map_width and v2_c[1] < self.map_height
 	def get_range_list(self, x, y, r):
+		# TODO: include path to each cell.
 		a_targ = [[] for i in range(r+1)]
 		a_targ[0].append((int(x), int(y)))
 		for i in range(1,r+1):
@@ -88,10 +143,11 @@ class mygame:
 		self.window = glutCreateWindow(b'Hello World!')			   # create window with title
 		if FULLSCREEN: glutFullScreen()
 	def init_callback(self):
-		glutDisplayFunc(lambda: m.draw())					   # set draw function callback
-		glutIdleFunc(lambda: m.draw())						   # draw all the time
-		glutMouseFunc(lambda button, state, x, y: m.mouse(button, state, x, y))
-		glutKeyboardFunc(lambda key, x, y: m.keyboard(key, x, y))
+		glutDisplayFunc(lambda: self.draw())					   # set draw function callback
+		glutIdleFunc(lambda: self.draw())						   # draw all the time
+		glutMouseFunc(lambda button, state, x, y: self.mouse(button, state, x, y))
+		glutPassiveMotionFunc(lambda x, y: self.mouse_passive(x, y))
+		glutKeyboardFunc(lambda key, x, y: self.keyboard(key, x, y))
 		glutReshapeFunc(lambda w, h: self.reshape(w, h))
 	def init_tex(self):
 		texnames = [TEXDIR+s+TEXEXT for s in g_texnames]
@@ -99,7 +155,13 @@ class mygame:
 	def reshape(self, w, h):
 		self.width = w
 		self.height = h
+	def mouse_passive(self, x, y):
+		self.mouseloc = (
+			x * self.map_width // self.width,
+			(self.height - y) * self.map_height // self.height
+		)
 	def mouse(self, button, state, x, y):
+		# TODO: ADD HEX CLICK LOGIC.
 		if TILE_TYPE == tile.RECT:
 			rx = x * self.map_width // self.width
 			ry = (self.height - y) * self.map_height // self.height
@@ -148,6 +210,12 @@ class mygame:
 			if v2_coord in l2_range[i]:
 				return i
 		return -1
+	def get_tile_tex(self, t):
+		for u in self.units:
+			if u.loc == t.loc:
+				return u.tex
+		else:
+			return t.tex
 	def draw(self):
 		refresh2d(1, 1, self.width, self.height)										# set mode to 2d
 		
@@ -157,32 +225,44 @@ class mygame:
 			glColor3f(1.0, 1.0, 1.0);
 			font.draw("Hello World!", 0.5, 0.5)
 		else:
+			usepath=self.selected != None and self.mouseloc != None
+			if usepath and USETEX:
+				path = self.get_path_tex(self.units[self.selected].loc, self.mouseloc)
+			
 			for t in self.tiles:
 				if USETEX:
-					for u in self.units:
-						if u.loc == t.loc:
-							glBindTexture(GL_TEXTURE_2D, self.textures[u.tex])
-							break
+					if usepath:
+						try:
+							tex = path[t.loc][0]
+							glBindTexture(GL_TEXTURE_2D, self.textures[tex])
+							rot = path[t.loc][1]
+						except KeyError:
+							tex = self.get_tile_tex(t)
+							glBindTexture(GL_TEXTURE_2D, self.textures[tex])
+							rot = 0
 					else:
-						glBindTexture(GL_TEXTURE_2D, self.textures[t.tex])
-				
-				r = self.get_range(self.targets, t.loc)
-				if r != -1:
-					for u in self.units:
-						if u.loc == t.loc and u.loc != self.targets[0][0]:
-							foo = False
-							break
-					else:
-						foo = True
-					if foo:
-						c = g_colors["SELECTED"]
-						c.r = float(self.units[self.selected].moverange+1-r) / (self.units[self.selected].moverange+1)# 0->1 1->0.5 2->0.33
-					else:
-						c = g_colors["FOW"]
-					c.draw()
+						tex = self.get_tile_tex(t)
+						glBindTexture(GL_TEXTURE_2D, self.textures[tex])
+						rot = 0
 				else:
-					g_colors["FOW"].draw()
-				t.draw(self.size)
+					rot = 0
+				r = self.get_range(self.targets, t.loc)
+				
+				if r == -1: # tile is not in range of selected unit
+					# color the tile being hovered over blue
+					if self.mouseloc != None and t.loc == self.mouseloc:
+						c = color.d_color["BLUE"] * 0.5
+					# color others grey
+					else:
+						c = color.d_color["WHITE"] * 0.5
+				else:
+					if self.mouseloc != None and t.loc == self.mouseloc:
+						c = color.d_color["GREEN"] * 0.5
+					else:
+						c = color.d_color["RED"]
+						c.r = float(self.units[self.selected].moverange+1-r) / (self.units[self.selected].moverange+1)# 0->1 1->0.5 2->0.33
+				c.draw()
+				t.draw(self.size, rot)
 		glDisable(GL_TEXTURE_2D)		
 		glutSwapBuffers()
 		

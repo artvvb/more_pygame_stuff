@@ -26,9 +26,10 @@ class tile:
 		self.loc = (x, y)
 		self.coords = [(x + cx, y + cy) for cx, cy in tiledata[tiletype]]
 		self.texcoords = [(cx, 1.0 - cy) for cx, cy in tiledata[tiletype]]
-	def draw(self, size):
+	def draw(self, size, rotation):
 		glBegin(GL_QUADS if self.tiletype == "RECT" else GL_POLYGON)
 		for i in range(len(self.coords)):
-			glTexCoord2f(self.texcoords[i][0], self.texcoords[i][1])
+			ti = (i + rotation) % len(self.texcoords)
+			glTexCoord2f(self.texcoords[ti][0], self.texcoords[ti][1])
 			glVertex2f(self.coords[i][0] * size[0], self.coords[i][1] * size[1])
 		glEnd()
