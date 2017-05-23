@@ -311,9 +311,7 @@ class mygame:
 					else:
 						c = color.d_color["WHITE"] * ((self.m_d_v2_tiles[loc].weight + 1.0) / (RANDRANGE[1] + 2.0))
 				else:
-					if self.mouseloc != None and loc == self.mouseloc:
-						c = color.d_color["GREEN"] * 0.5
-					elif self.loc_has_unit(loc) and (self.selected == None or loc != self.units[self.selected].loc):
+					if self.loc_has_unit(loc) and (self.selected == None or loc != self.units[self.selected].loc):
 						c = color.d_color["WHITE"] * ((self.m_d_v2_tiles[loc].weight + 1.0) / (RANDRANGE[1] + 2.0))
 					elif self.selected != None and loc == self.units[self.selected].loc:
 						c = color.d_color["RED"]
