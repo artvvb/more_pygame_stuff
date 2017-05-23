@@ -29,8 +29,8 @@ def draw_rect(x, y, dx, dy, size, usetex, rotation=0):
 	glEnd()
 
 class tile:
-	def __init__(self, x, y, tex, tiletype, data):
-		self.tex, self.tiletype, self.data = tex, tiletype, data
+	def __init__(self, x, y, tex, tiletype, weight):
+		self.tex, self.tiletype, self.weight = tex, tiletype, weight
 		self.loc = (x, y)
 		self.coords = [(x + cx, y + cy) for cx, cy in tiledata[tiletype]]
 		self.texcoords = [(cx, 1.0 - cy) for cx, cy in tiledata[tiletype]]
