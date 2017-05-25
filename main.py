@@ -13,8 +13,7 @@ import random
 import coord
 import pathfinding
 import tex
-
-import datetime
+import fps
 
 # TODO: next step, implement turn structure.
 
@@ -110,8 +109,8 @@ class mygame:
 		self.l_v2_movereg = None # TODO: REPLACE WITH PATH SUPERSET.
 		self.tooltip = tooltips.tooltip(1.0)
 		self.tooltip.start()
-		self.mytime = None
 		self.path = None
+		self.myfps = fps.fps()
 	def init_window(self):
 		glutInit()
 		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
@@ -307,37 +306,21 @@ class mygame:
 			#"""
 		glDisable(GL_TEXTURE_2D)
 		if self.tooltip.do_render and self.wmouseloc != None:
-			glColor3f(1.0, 1.0, 1.0)
+			#glColor3f(1.0, 1.0, 1.0)
 			s = "data: " + repr(self.tooltip.data)
-			tile.draw_rect(
-				self.wmouseloc[0],
-				self.wmouseloc[1] + 15.0 / self.window_size.y,
-				8.0 * len(s) / self.window_size.x,
-				-1.0 * 15 / self.window_size.y,
-				self.size,
-				True
-			)
-			glColor3f(0.0, 0.0, 0.0)
-			font.draw(s, self.wmouseloc[0], self.wmouseloc[1] + 3.0 / self.window_size.y)
-		if self.mytime == None:
-			self.mytime = datetime.datetime.now()
-		elif SHOWFPS:
-			newtime = datetime.datetime.now()
-			delta = newtime-self.mytime
-			rate = 1000000.0/delta.microseconds
-			glColor3f(1.0, 1.0, 1.0)
-			s = "freq: " + repr(rate)
-			tile.draw_rect(
-				0.0,
-				15.0 / self.window_size.y,
-				8.0 * len(s) / self.window_size.x,
-				-1.0 * 15 / self.window_size.y,
-				self.size,
-				True
-			)
-			glColor3f(0.0, 0.0, 0.0)
-			font.draw(s, 0, 0.0 / self.window_size.y)
-			self.mytime = newtime
+			#tile.draw_rect(
+			#	self.wmouseloc[0],
+			#	self.wmouseloc[1] + 15.0 / self.window_size.y,
+			#	8.0 * len(s) / self.window_size.x,
+			#	-1.0 * 15 / self.window_size.y,
+			#	self.size,
+			#	True
+			#)
+			#glColor3f(0.0, 0.0, 0.0)
+			font.draw(s, self.wmouseloc[0], self.wmouseloc[1] + 3.0 / self.window_size.y, True, self.window_size, self.size)
+		if SHOWFPS:
+			self.myfps.update()
+			self.myfps.draw((0.0,0.0), self.window_size, self.size)
 		glutSwapBuffers()
 		
 # initialization
