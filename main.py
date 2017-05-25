@@ -16,6 +16,8 @@ import tex
 
 import datetime
 
+# TODO: next step, implement turn structure.
+
 window = 0		# glut window number
 
 TILE_TYPE = tile.RECT
@@ -26,7 +28,7 @@ USEFONT = False
 USETEX = TILE_TYPE == tile.RECT
 TEXDIR = "textures/"
 TEXEXT = ".png"
-RANDRANGE=(1,2)
+RANDRANGE=(1,3)
 SHOWFPS=True
 
 
@@ -292,13 +294,15 @@ class mygame:
 				c = color.d_color["WHITE"]
 			else:
 				c = color.d_color["RED"]
-			c = c * ((self.m_d_v2_tiles[loc].weight + 1.0) / (RANDRANGE[1] + 2.0))
+			weightmult = ((self.m_d_v2_tiles[loc].weight - RANDRANGE[0] + 1.0) / (RANDRANGE[1] - RANDRANGE[0] + 1.0))
+			#weightmult for an appropriate RANDRANGE should be [W+1/dR+1 for W] -> [1/2,2/2] for dR=1
+			c = c * weightmult
 			c.draw()
 			self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(stex, rot))
 			
 			if self.path != None and loc in self.path:
 				itex, rot = self.path[loc]
-				color.d_color["WHITE"].draw()
+				(color.d_color["WHITE"]*0.5).draw()
 				self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(g_texnames[itex], rot))
 			#"""
 		glDisable(GL_TEXTURE_2D)

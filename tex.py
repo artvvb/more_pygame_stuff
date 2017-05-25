@@ -3,7 +3,7 @@ from PIL import Image
 import numpy
 import tile
 
-ATLAS_NAME="textures/atlas.png"
+ATLAS_NAME="atlas.png"
 ATLAS_POSITIONS = {
 	"bound": 	(0,0),
 	"arrow-ud":	(1,0),
