@@ -9,18 +9,23 @@ ATLAS_POSITIONS = {
 	"arrow-ud":	(1,0),
 	"unit": 	(2,0),
 	"arrow-ur":	(0,1),
-	"arrow-u":	(1,1)
+	"arrow-u":	(1,1),
+	"blank": (2,1)
 }
 ATLAS_SIZE = (3,2)
 BASE_TEXCOORDS = [(cx, 1.0 - cy) for cx, cy in tile.tiledata[tile.RECT]]
 g_texture = None
 def init():
 	global g_texture
+	
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 	g_texture = glGenTextures(1)
 	
 	img = Image.open(ATLAS_NAME)
 	img_data = numpy.array(list(img.getdata()), numpy.uint8)
-
+	
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1)
 	glBindTexture(GL_TEXTURE_2D, g_texture)
 
@@ -28,7 +33,7 @@ def init():
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.size[0], img.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, img_data)
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.size[0], img.size[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
 	
 def get_texcoords(key, rotation):
 	position = ATLAS_POSITIONS[key]

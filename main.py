@@ -19,7 +19,7 @@ import datetime
 window = 0		# glut window number
 
 TILE_TYPE = tile.RECT
-MAP_SIZE = coord.coord(40, 40)
+MAP_SIZE = coord.coord(10, 10)
 WINDOW_SIZE = coord.coord(640, 480)
 FULLSCREEN = False
 USEFONT = False
@@ -238,6 +238,7 @@ class mygame:
 				else:
 					self.units[self.selected].loc = (rx, ry)
 					self.l_v2_movereg = self.get_range_list((rx,ry), self.units[self.selected].moverange)
+					self.update_path()
 	def update_path(self):
 		if self.selected == None or self.mouseloc == None:
 			self.path = None
@@ -269,42 +270,37 @@ class mygame:
 	def draw(self):
 		refresh2d(1, 1, self.window_size.x, self.window_size.y)										# set mode to 2d
 		
-		glClear(GL_COLOR_BUFFER_BIT)
-		if USETEX: glEnable(GL_TEXTURE_2D)
-		if USEFONT:
-			glColor3f(1.0, 1.0, 1.0);
-			font.draw("Hello World!", 0.5, 0.5)
-		else:
-			glBindTexture(GL_TEXTURE_2D, tex.g_texture)
-			for loc in self.m_d_v2_tiles:
-				if self.loc_has_unit(loc):
-					itex = g_texnames.index("unit")
-					rot = 0
-				elif self.path != None and loc in self.path:
-					itex, rot = self.path[loc]
+		#glClear(GL_COLOR_BUFFER_BIT)
+		glEnable(GL_TEXTURE_2D)
+	
+		glBindTexture(GL_TEXTURE_2D, tex.g_texture)
+		for loc in self.m_d_v2_tiles:
+			if self.loc_has_unit(loc):
+				stex = "unit"
+				rot = 0
+			else:
+				stex = "bound"
+				rot = 0
+			#r = self.get_range(self.l_v2_movereg, loc)
+			
+			if self.l_v2_movereg == None or not loc in self.l_v2_movereg: # tile is not in range of selected unit
+				if self.mouseloc != None and loc == self.mouseloc:
+					c = color.d_color["BLUE"]
 				else:
-					itex = g_texnames.index("bound")
-					rot = 0
-				#r = self.get_range(self.l_v2_movereg, loc)
-				
-				if self.l_v2_movereg == None or not loc in self.l_v2_movereg: # tile is not in range of selected unit
-					# color the tile being hovered over blue
-					if self.mouseloc != None and loc == self.mouseloc:
-						c = color.d_color["BLUE"] * 0.5
-					# color others grey
-					else:
-						c = color.d_color["WHITE"] * ((self.m_d_v2_tiles[loc].weight + 1.0) / (RANDRANGE[1] + 2.0))
-				else:
-					if self.loc_has_unit(loc) and (self.selected == None or loc != self.units[self.selected].loc):
-						c = color.d_color["WHITE"] * ((self.m_d_v2_tiles[loc].weight + 1.0) / (RANDRANGE[1] + 2.0))
-					elif self.selected != None and loc == self.units[self.selected].loc:
-						c = color.d_color["RED"]
-					else:
-						 # :[0:2]
-						c = color.d_color["RED"] * ((self.m_d_v2_tiles[loc].weight + 1.0) / (RANDRANGE[1] + 2.0))
-				c.draw()
+					c = color.d_color["WHITE"]
+			elif self.loc_has_unit(loc) and (self.selected == None or loc != self.units[self.selected].loc):
+				c = color.d_color["WHITE"]
+			else:
+				c = color.d_color["RED"]
+			c = c * ((self.m_d_v2_tiles[loc].weight + 1.0) / (RANDRANGE[1] + 2.0))
+			c.draw()
+			self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(stex, rot))
+			
+			if self.path != None and loc in self.path:
+				itex, rot = self.path[loc]
+				color.d_color["WHITE"].draw()
 				self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(g_texnames[itex], rot))
-				#"""
+			#"""
 		glDisable(GL_TEXTURE_2D)
 		if self.tooltip.do_render and self.wmouseloc != None:
 			glColor3f(1.0, 1.0, 1.0)
