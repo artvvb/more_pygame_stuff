@@ -1,5 +1,7 @@
 from OpenGL.GL import *
 
+import geometry
+
 tiledata = [
 	[
 		( 0.0, 0.0 ),
@@ -22,6 +24,9 @@ HEX = 1
 
 def draw_rect(x, y, dx, dy, size, usetex, rotation=0):
 	glBegin(GL_QUADS)
+	#coord = geometry.
+	#vertices = geometry.GEOMETRY_COMPONENTS[geometry.TILETYPE].
+	
 	for i in range(4):
 		ti = (i + rotation) % 4
 		glTexCoord2f(tiledata[0][ti][0], tiledata[0][ti][1])
