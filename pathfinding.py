@@ -1,4 +1,4 @@
-
+import coord
 
 class pathnode:
 	def __init__(self, loc, weight, delta):
@@ -8,14 +8,13 @@ class pathnode:
 	
 def get_path(d_graph, src, max_weight, deltas):
 	# graph is a dict indexed by location
-	# nodes in graph must contain .loc and .weight members
-	edge = [pathnode(src, 0, (0,0))]
-	path = {src:pathnode(src, 0, (0,0))}
+	# nodes in graph must contain .weight members
+	edge = [pathnode(src, 0, coord.Coord(x=0,y=0))]
+	path = {src:pathnode(src, 0, coord.Coord(x=0,y=0))}
 	
 	while len(edge) > 0:
 		edge.sort(key=lambda val:val.weight)
 		temp = edge.pop(0)
-		#adj = [ for delta in deltas if (temp.loc[0]+delta[0],temp.loc[1]+delta[1]) in d_graph]
 		for delta in deltas:
 			loc = temp.loc + delta
 			if not loc in d_graph:
@@ -27,12 +26,12 @@ def get_path(d_graph, src, max_weight, deltas):
 				for pnode in edge:
 					if pnode.loc == loc:
 						i = edge.index(loc)
-						if d_graph[loc] + temp.weight < edge[i].weight:
-							edge[i].weight = d_graph[loc] + temp.weight
+						if d_graph[loc].weight + temp.weight < edge[i].weight:
+							edge[i].weight = d_graph[loc].weight + temp.weight
 						break
 				else:
-					if d_graph[loc] + temp.weight <= max_weight:
-						edge.append(pathnode(loc, d_graph[loc] + temp.weight, delta))
+					if d_graph[loc].weight + temp.weight <= max_weight:
+						edge.append(pathnode(loc, d_graph[loc].weight + temp.weight, delta))
 		if temp.weight <= max_weight:
 			path[temp.loc] = temp
 	return path

@@ -1,2 +1,3 @@
-__pycache__/*
-shader_tut/*
+__pycache__/**
+shader_tut/**
+test/**

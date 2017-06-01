@@ -40,24 +40,21 @@ TILE_ADJ = [
 ]
 
 ARROW_ROT = {
-	( 0, 1): 0,
-	(-1, 0): 1,
-	( 0,-1): 2,
-	( 1, 0): 3
+	TILE_ADJ[3]: 0,
+	TILE_ADJ[0]: 1,
+	TILE_ADJ[1]: 2,
+	TILE_ADJ[2]: 3
 }
 
 CORNER_ROT = {
-	(-1, 0, 0, 1): 1,
-	( 0, 1,-1, 0): 3,
-	
-	(-1, 0, 0,-1): 0,
-	( 0,-1,-1, 0): 2,
-	
-	( 1, 0, 0,-1): 3,
-	( 0,-1, 1, 0): 1,
-	
-	( 1, 0, 0, 1): 2,
-	( 0, 1, 1, 0): 0
+	(TILE_ADJ[0],TILE_ADJ[3]): 1,
+	(TILE_ADJ[3],TILE_ADJ[0]): 3,
+	(TILE_ADJ[0],TILE_ADJ[1]): 0,
+	(TILE_ADJ[1],TILE_ADJ[0]): 2,
+	(TILE_ADJ[2],TILE_ADJ[1]): 3,
+	(TILE_ADJ[1],TILE_ADJ[2]): 1,
+	(TILE_ADJ[2],TILE_ADJ[3]): 2,
+	(TILE_ADJ[3],TILE_ADJ[2]): 0
 }
 
 
@@ -82,7 +79,6 @@ class mygame:
 		self.window_size = WINDOW_SIZE
 		self.map_size = MAP_SIZE
 		self.size = (1.0 / self.map_size.x, 1.0 / self.map_size.y)
-		self.selected = None
 		
 		#self.tiles = []
 		self.m_d_v2_tiles = {}
@@ -107,10 +103,10 @@ class mygame:
 		self.selected = None
 		self.mouseloc = None
 		self.wmouseloc = None
-		self.l_v2_movereg = None # TODO: REPLACE WITH PATH SUPERSET.
 		self.tooltip = tooltips.tooltip(1.0)
 		self.tooltip.start()
 		self.path = None
+		self.pathtex = None
 		self.myfps = fps.fps()
 	def init_window(self):
 		glutInit()
@@ -127,51 +123,37 @@ class mygame:
 		glutKeyboardFunc(lambda key, x, y: self.keyboard(key, x, y))
 		glutReshapeFunc(lambda w, h: self.reshape(w, h))
 	
-	def get_delta(self, v2_s, v2_d):
-		if v2_s[0] > v2_d[0]:
-			return (-1, 0)
-		elif v2_s[0] < v2_d[0]:
-			return ( 1, 0)
-		elif v2_s[1] > v2_d[1]:
-			return ( 0,-1)
-		else:# v2_s[0] < v2_d[0]:
-			return ( 0, 1)
 	def deltas_to_tex(self, delta_src, delta_dst):
 		if delta_src == delta_dst:
-			rot = ARROW_ROT[(delta_src.x,delta_src.y)]
+			rot = ARROW_ROT[delta_src]
 		else:
-			rot = CORNER_ROT[(delta_src.x,delta_src.y)+(delta_dst.x,delta_dst.y)]
+			rot = CORNER_ROT[(delta_src,delta_dst)]
 		if delta_dst.x == delta_src.x or delta_dst.y == delta_src.y:
 			texname = "arrow-ud"
 		else:
 			texname = "arrow-ur"
 			
 		return (g_texnames.index(texname), rot)
-	def get_path_tex(self, v2_s, v2_d, r):
+	def get_path_tex(self, v2_s, v2_d):
 		#def get_path(d_graph, src, max_weight, deltas):
-		print("enter get_path_tex:", v2_s, v2_d)
+		
 		if v2_d == v2_s:
 			return {}
-		tiles = {}
-		# todo: create a more sparse weight dict
-		for tloc in self.m_d_v2_tiles:
-			if not tloc in self.units:
-				tiles[tloc] = self.m_d_v2_tiles[tloc].weight
-		path = pathfinding.get_path(tiles, v2_s, r, TILE_ADJ)
-		# path dict [coordinate tuple] : .src(delta), .weight
+		
 		n = 0
-		for key in path:
+		for key in self.path:
 			n += 1
 		print("test:",n,v2_d,v2_s)
-		if not v2_d in path or not v2_s in path:
+		
+		if not v2_d in self.path or not v2_s in self.path:
 			return {}
 			
 		v2_t = v2_d
-		rdict = {v2_t:(g_texnames.index("arrow-u"), ARROW_ROT[path[v2_t].delta])}
+		rdict = {v2_t:(g_texnames.index("arrow-u"), ARROW_ROT[self.path[v2_t].delta])}
 		
-		while v2_t - path[v2_t].delta != v2_s:
-			nextdelta = path[v2_t - path[v2_t].delta].delta
-			delta = path[v2_t].delta
+		while v2_t - self.path[v2_t].delta != v2_s:
+			nextdelta = self.path[v2_t - self.path[v2_t].delta].delta
+			delta = self.path[v2_t].delta
 			
 			rdict[v2_t - delta] = self.deltas_to_tex(nextdelta, delta)
 			v2_t = v2_t - delta
@@ -179,31 +161,7 @@ class mygame:
 		
 	def coord_in_bounds(self, v2_c):
 		return v2_c[0] >= 0 and v2_c[1] >= 0 and v2_c[0] < self.map_size.x and v2_c[1] < self.map_size.y
-	def get_range_list(self, v2_s, r):
 		
-		tiles = {}
-		for tloc in self.m_d_v2_tiles:
-			if not tloc in self.units:
-				tiles[tloc] = self.m_d_v2_tiles[tloc].weight
-		return [loc for loc in pathfinding.get_path(tiles, v2_s, r, TILE_ADJ)]
-		"""
-		# TODO: include path to each cell.
-		# (combine with get_path_tex)
-		a_targ = [[] for i in range(r+1)]
-		a_targ[0].append(v2_s)
-		for i in range(1,r+1):
-			for v2_tile in a_targ[i-1]:
-				for v2_delta in TILE_ADJ:
-					v2_coord = (v2_tile[0]+v2_delta[0], v2_tile[1]+v2_delta[1])
-					if self.coord_in_bounds(v2_coord) and not self.loc_has_unit(v2_coord):
-						for l in a_targ:
-							if v2_coord in l:
-								break
-						else:
-							a_targ[i].append(v2_coord)
-		return a_targ
-		"""
-	
 	def reshape(self, w, h):
 		self.window_size.x = w
 		self.window_size.y = h
@@ -217,9 +175,10 @@ class mygame:
 		ny = (self.window_size.y - y) * self.map_size.y // self.window_size.y
 		
 		self.mouseloc = coord.Coord(x=nx,y=ny)
+		print(self.mouseloc)
 		
-		if self.selected != None:
-			self.update_path()
+		self.update_path()
+		
 		if self.mouseloc in self.m_d_v2_tiles:
 			self.tooltip.data = self.m_d_v2_tiles[self.mouseloc].weight
 			self.tooltip.start()
@@ -232,26 +191,23 @@ class mygame:
 		if button == GLUT_RIGHT_BUTTON and state == GLUT_DOWN:
 			if coord.Coord(x=rx,y=ry) in self.units:
 				self.selected = coord.Coord(x=rx,y=ry)
-				self.l_v2_movereg=self.get_range_list(self.units[self.selected].loc, self.units[self.selected].moverange)
-				self.update_path()
 			else:
 				self.selected = None
-				self.update_path()
-				self.l_v2_movereg = None
 		elif button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
 			c = coord.Coord(x=rx,y=ry)
-			if self.l_v2_movereg != None and c in self.l_v2_movereg and not c in self.units:
+			if self.path != None and c in self.path and not c in self.units:
 				self.units[c] = self.units[self.selected]
 				self.units.pop(self.selected, None)
 				self.selected = c
 				self.units[self.selected].loc = self.selected
-				self.l_v2_movereg = self.get_range_list(self.selected, self.units[self.selected].moverange)
-				self.update_path()
+		self.update_path()
 	def update_path(self):
-		if self.selected == None or self.mouseloc == None:
-			self.path = None
-		else:
-			self.path = self.get_path_tex(self.selected, self.mouseloc, self.units[self.selected].moverange)
+		tiles = {}
+		for loc in self.m_d_v2_tiles:
+			if not loc in self.units:
+				tiles[loc] = self.m_d_v2_tiles[loc]
+		self.path = None if self.selected == None else pathfinding.get_path(tiles, self.selected, self.units[self.selected].moverange, TILE_ADJ)
+		self.pathtex = None if self.selected == None or self.mouseloc == None else self.get_path_tex(self.selected, self.mouseloc)
 	def keyboard(self, key, x, y):
 		if key == b'\x1b':
 			self.tooltip.stop()
@@ -282,9 +238,8 @@ class mygame:
 		for loc in self.m_d_v2_tiles:
 			stex = "unit" if loc in self.units else "bound"
 			rot = 0
-			#r = self.get_range(self.l_v2_movereg, loc)
 			
-			if self.l_v2_movereg == None or not loc in self.l_v2_movereg: # tile is not in range of selected unit
+			if self.path == None or not loc in self.path: # tile is not in range of selected unit
 				if self.mouseloc != None and loc == self.mouseloc:
 					c = color.d_color["BLUE"]
 				else:
@@ -299,8 +254,8 @@ class mygame:
 			c.draw()
 			self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(stex, rot))
 			
-			if self.path != None and loc in self.path:
-				itex, rot = self.path[loc]
+			if self.pathtex != None and loc in self.pathtex:
+				itex, rot = self.pathtex[loc]
 				(color.d_color["WHITE"]*0.5).draw()
 				self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(g_texnames[itex], rot))
 			#"""
