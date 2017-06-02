@@ -15,6 +15,8 @@ import pathfinding
 import tex
 import fps
 import geometry
+import map
+
 
 # TODO: next step, implement turn structure.
 
@@ -25,7 +27,6 @@ MAP_SIZE = coord.Coord(x=10, y=10)
 WINDOW_SIZE = coord.Coord(x=640, y=480)
 FULLSCREEN = False
 USEFONT = False
-USETEX = TILE_TYPE == tile.RECT
 TEXDIR = "textures/"
 TEXEXT = ".png"
 RANDRANGE=(1,3)
@@ -57,8 +58,6 @@ CORNER_ROT = {
 	(TILE_ADJ[3],TILE_ADJ[2]): 0
 }
 
-
-#g_TILETEX =  if TILE_TYPE == tile.RECT else "hex-bound"
 g_texnames = [key for key in tex.ATLAS_POSITIONS]
 
 def refresh2d(vw, vh, width, height):
@@ -78,19 +77,23 @@ class mygame:
 		
 		self.window_size = WINDOW_SIZE
 		self.map_size = MAP_SIZE
-		self.size = (1.0 / self.map_size.x, 1.0 / self.map_size.y)
+		self.size = coord.Coord(x = 1.0 / self.map_size.x, y = 1.0 / self.map_size.y)
 		
-		#self.tiles = []
-		self.m_d_v2_tiles = {}
-		for y in range(self.map_size.y):
-			for x in range(self.map_size.x):
-				ttex = 0#g_texnames.index(g_TILETEX)#(x+y*self.map_size.x)%2
-				tx = x if TILE_TYPE == tile.RECT else (x + (0.5 if y%2 == 0 else 0.0))
-				ty = y
-				tloc = coord.Coord(x=tx, y=ty)
-				tweight = random.randint(RANDRANGE[0], RANDRANGE[1])
-				#self.tiles.append(tile.tile(tx, ty, ttex, TILE_TYPE, tweight))
-				self.m_d_v2_tiles[tloc] = tile.tile(tx, ty, ttex, TILE_TYPE, tweight)
+		#self.tiles = {}
+		#for y in range(self.map_size.y):
+		#	for x in range(self.map_size.x):
+		#		ttex = 0
+		#		tx = x if TILE_TYPE == tile.RECT else (x + (0.5 if y%2 == 0 else 0.0))
+		#		ty = y
+		#		tloc = coord.Coord(x=tx, y=ty)
+		#		tweight = random.randint(RANDRANGE[0], RANDRANGE[1])
+		#		#self.tiles.append(tile.tile(tx, ty, ttex, TILE_TYPE, tweight))
+		#		self.tiles[tloc] = tile.tile(tx, ty, ttex, TILE_TYPE, tweight)
+				
+		coordFactory = map.RectCoordFactory(MAP_SIZE)
+		dataFactory = map.RandDataFactory(RANDRANGE)
+		self.map = map.Map(coordFactory, dataFactory)
+		
 		self.init_window()
 		self.init_callback()
 		tex.init()
@@ -135,17 +138,7 @@ class mygame:
 			
 		return (g_texnames.index(texname), rot)
 	def get_path_tex(self, v2_s, v2_d):
-		#def get_path(d_graph, src, max_weight, deltas):
-		
-		if v2_d == v2_s:
-			return {}
-		
-		n = 0
-		for key in self.path:
-			n += 1
-		print("test:",n,v2_d,v2_s)
-		
-		if not v2_d in self.path or not v2_s in self.path:
+		if v2_d == v2_s or not v2_d in self.path or not v2_s in self.path:
 			return {}
 			
 		v2_t = v2_d
@@ -165,6 +158,7 @@ class mygame:
 	def reshape(self, w, h):
 		self.window_size.x = w
 		self.window_size.y = h
+		
 	def mouse_passive(self, x, y):
 		self.wmouseloc = coord.Coord(x=x,y=y)
 		self.wmouseloc *= coord.Coord(x=1.0,y=-1.0)
@@ -175,12 +169,14 @@ class mygame:
 		ny = (self.window_size.y - y) * self.map_size.y // self.window_size.y
 		
 		self.mouseloc = coord.Coord(x=nx,y=ny)
-		print(self.mouseloc)
 		
 		self.update_path()
 		
-		if self.mouseloc in self.m_d_v2_tiles:
-			self.tooltip.data = self.m_d_v2_tiles[self.mouseloc].weight
+		#if self.mouseloc in self.tiles:
+			#self.tooltip.data = self.tiles[self.mouseloc].weight
+			#self.tooltip.start()
+		if self.mouseloc in self.map:
+			self.tooltip.data = self.map[self.mouseloc].weight
 			self.tooltip.start()
 	def mouse(self, button, state, x, y):
 		# TODO: ADD HEX CLICK LOGIC.
@@ -203,9 +199,10 @@ class mygame:
 		self.update_path()
 	def update_path(self):
 		tiles = {}
-		for loc in self.m_d_v2_tiles:
+		for loc in self.map:
 			if not loc in self.units:
-				tiles[loc] = self.m_d_v2_tiles[loc]
+				#tiles[loc] = self.tiles[loc]
+				tiles[loc] = self.map[loc]
 		self.path = None if self.selected == None else pathfinding.get_path(tiles, self.selected, self.units[self.selected].moverange, TILE_ADJ)
 		self.pathtex = None if self.selected == None or self.mouseloc == None else self.get_path_tex(self.selected, self.mouseloc)
 	def keyboard(self, key, x, y):
@@ -235,7 +232,7 @@ class mygame:
 		glEnable(GL_TEXTURE_2D)
 	
 		glBindTexture(GL_TEXTURE_2D, tex.g_texture)
-		for loc in self.m_d_v2_tiles:
+		for loc in self.map:
 			stex = "unit" if loc in self.units else "bound"
 			rot = 0
 			
@@ -244,21 +241,19 @@ class mygame:
 					c = color.d_color["BLUE"]
 				else:
 					c = color.d_color["WHITE"]
-			elif self.loc_has_unit(loc) and (self.selected == None or loc != self.units[self.selected].loc):
+			elif self.loc_has_unit(loc) and (self.selected == None or loc != self.selected):
 				c = color.d_color["WHITE"]
 			else:
 				c = color.d_color["RED"]
-			weightmult = ((self.m_d_v2_tiles[loc].weight - RANDRANGE[0] + 1.0) / (RANDRANGE[1] - RANDRANGE[0] + 1.0))
+			weightmult = ((self.map[loc].weight - RANDRANGE[0] + 1.0) / (RANDRANGE[1] - RANDRANGE[0] + 1.0))
 			#weightmult for an appropriate RANDRANGE should be [W+1/dR+1 for W] -> [1/2,2/2] for dR=1
 			c = c * weightmult
 			c.draw()
-			self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(stex, rot))
-			
-			if self.pathtex != None and loc in self.pathtex:
+			tile.draw_tile(loc, self.size, tex.get_texcoords(stex, rot), rot)
+			if self.pathtex and loc in self.pathtex:
 				itex, rot = self.pathtex[loc]
 				(color.d_color["WHITE"]*0.5).draw()
-				self.m_d_v2_tiles[loc].draw(self.size, rot, tex.get_texcoords(g_texnames[itex], rot))
-			#"""
+				tile.draw_tile(loc, self.size, tex.get_texcoords(g_texnames[itex], rot), rot)
 		glDisable(GL_TEXTURE_2D)
 		if self.tooltip.do_render and self.wmouseloc != None:
 			s = "data: " + repr(self.tooltip.data)
