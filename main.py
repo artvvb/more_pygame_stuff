@@ -199,7 +199,7 @@ class mygame:
 		self.update_path()
 	def update_path(self):
 		tiles = {}
-		for loc in self.map:
+		for loc in self.map: # this is likely heavily impacting performance?
 			if not loc in self.units:
 				#tiles[loc] = self.tiles[loc]
 				tiles[loc] = self.map[loc]
@@ -249,11 +249,11 @@ class mygame:
 			#weightmult for an appropriate RANDRANGE should be [W+1/dR+1 for W] -> [1/2,2/2] for dR=1
 			c = c * weightmult
 			c.draw()
-			tile.draw_tile(loc, self.size, tex.get_texcoords(stex, rot), rot)
+			tile.draw_square(loc, self.size, tex.get_texcoords(stex, rot), rot)
 			if self.pathtex and loc in self.pathtex:
 				itex, rot = self.pathtex[loc]
 				(color.d_color["WHITE"]*0.5).draw()
-				tile.draw_tile(loc, self.size, tex.get_texcoords(g_texnames[itex], rot), rot)
+				tile.draw_square(loc, self.size, tex.get_texcoords(g_texnames[itex], rot), rot)
 		glDisable(GL_TEXTURE_2D)
 		if self.tooltip.do_render and self.wmouseloc != None:
 			s = "data: " + repr(self.tooltip.data)
