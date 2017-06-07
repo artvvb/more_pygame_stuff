@@ -86,8 +86,8 @@ class App:
 		glutIdleFunc(lambda: self.draw())
 		glutKeyboardFunc(lambda key, x, y: self.keyboard(key, x, y))
 		self.shader = Shader(filenames)
-		nX , nY = 2 , 2
-		fX , fY = nX / 2.0 , nY / 2.0
+		self.nX , self.nY = 2 , 2
+		fX , fY = self.nX / 2.0 , self.nY / 2.0
 		self.scale = (1.0/fX,1.0/fY)
 		self.offset = (-1.0*fX,-1.0*fY)
 		
@@ -104,7 +104,7 @@ class App:
 		#	[1,1],[2,0],[2,1]
 		#]]
 		self.colors = ((1,0,0),(0,1,0))
-		self.vbos = Map(nX,nY).make_vbos()#[arrays.vbo.VBO(numpy.array(x, dtype=numpy.float32)) for x in self.triangles]
+		self.vbos = Map(self.nX,self.nY).make_vbos()#[arrays.vbo.VBO(numpy.array(x, dtype=numpy.float32)) for x in self.triangles]
 		
 	def draw(self):
 		glClearColor(0,0,0,0)
@@ -124,7 +124,7 @@ class App:
 			glColor3f(self.colors[x][0],self.colors[x][1],self.colors[x][2])
 			self.vbos[x].bind()
 			glVertexPointer(2, GL_FLOAT, 0, None)
-			glDrawArrays(GL_TRIANGLES, 0, 12)
+			glDrawArrays(GL_TRIANGLES, 0, 3*self.nX*self.nY)
 			self.vbos[x].unbind()
 		glDisableClientState(GL_VERTEX_ARRAY)
 		self.shader.end()
